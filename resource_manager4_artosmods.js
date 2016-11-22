@@ -22,6 +22,9 @@ var webGLRenderer;
 
 var num_active_chunk_downloads = 0; //Montako chunkin latausta käynnissä
 
+var autoCamera = true;
+var userX, userZ, gui;
+
 function TextureImage(name, url, x, y, parentObj)  //Arvaus: y:hyn voidaan syöttää z-arvo?
 {
 	this.name = name;
@@ -581,13 +584,20 @@ function init() {
     webGLRenderer.setSize(window.innerWidth, window.innerHeight);
     webGLRenderer.shadowMapEnabled = true;
 
-    // position and point the camera to the center of the scene
-    camera.position.x = 60;
-    camera.position.y = 2;
-    camera.position.z = 0;
-    camera.lookAt(new THREE.Vector3(0, 0, 0));
+    //if autocam, we want it to point forward along a street instead
+    if (autoCamera) {
+	camera.rotation.set(0, 0, 0);
+	camera.position.x = 420;
+	camera.position.y = 2;
+	camera.position.z = 540;
+    } else { // position and point the camera to the center of the scene
+	camera.position.x = 60;
+	camera.position.y = 2;
+	camera.position.z = 500;
+	camera.lookAt(new THREE.Vector3(0, 0, 0));
+    }
 
-
+    //not used in autoCamera mode but created anyhow for code simplicity
     camControls = new THREE.FirstPersonControls(camera);
     camControls.lookSpeed = 0.1;
     camControls.movementSpeed = 20;
@@ -628,10 +638,10 @@ function init() {
     };
 
 	//Printtaillaan oma sijainti
-    var gui = new dat.GUI();
+        gui = new dat.GUI();
 
-	var userX = new Object();
-	var userZ = new Object();
+	userX = new Object();
+	userZ = new Object();
 	userX.positionX = camera.position.x;
 	userZ.positionZ = camera.position.z;
 	gui.add(userX, 'positionX').listen();
@@ -809,7 +819,7 @@ function prioritizeBlocks () {
 
 	camControls.update(delta);
 	webGLRenderer.clear();
-	requestAnimationFrame(render);
+	requestAnimationFrame(render); //XXX onko tää käytössä, tuleeko tupla render? XXX
 	webGLRenderer.render(scene, camera);
 
 	//console.log (buildingList);
@@ -866,17 +876,32 @@ function prioritizeBlocks () {
 /*function prioritizeBuildings(scenejson) {
 
 }*/
+
+function updateAutoCamera(delta) {
+    var speed = 10;
+    camera.translateZ(-(speed * delta));
+
+    if (camera.position.z < 425) {
+	camera.rotation.set(0, THREE.Math.degToRad(90), 0);
+    }
+
+}
 	
 function render() {
 
 	stats.update();
 	var delta = clock.getDelta();
 
-	camControls.update(delta);
+        if (autoCamera) {
+	    updateAutoCamera(delta);
+	} else {
+	    camControls.update(delta);
+	}
+
 	webGLRenderer.clear();
-/*		userX.positionX = camera.position.x;
+	userX.positionX = camera.position.x;
 	userZ.positionZ = camera.position.z;
-	userloc = {x:userX.positionX, y:userZ.positionZ};
+	/*userloc = {x:userX.positionX, y:userZ.positionZ};
 	sortcounter++;
 	if (sortcounter === 300){ //Tässä sortataan objektit ja ladataan!
 		objectdistances = distanceToObjects(userloc);

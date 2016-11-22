@@ -19,11 +19,31 @@ var camera;
 var stats;
 var camControls;
 var webGLRenderer;
+var userX, userZ, gui;
 
 var num_active_chunk_downloads = 0; //Montako chunkin latausta käynnissä
 
 var autoCamera = true;
-var userX, userZ, gui;
+var autoIndex = 0;
+var autoPathConfig = [
+    [420, 540],
+    [420, 300],
+    [180, 300],
+    [180, 420],
+    [60,  420],
+    [60,  300],
+    [180, 300],
+    [180, 180],
+    [420, 180],
+    [420, -55],
+    //[,],
+];
+var autoPath = [];
+for (i in autoPathConfig) { 
+    var cur = autoPathConfig[i];
+    var vec = new THREE.Vector3(cur[0], 2, cur[1]);
+    autoPath.push(vec);
+}
 
 function TextureImage(name, url, x, y, parentObj)  //Arvaus: y:hyn voidaan syöttää z-arvo?
 {
@@ -236,7 +256,7 @@ textureimagelist = []; //Tämä täytetään sitä mukaa kun blokkeja saadaan la
 
 function updateDownloadQueue()
 {
-    console.log("updateDownloadQueue() " + new Date());
+    //console.log("updateDownloadQueue() " + new Date());
     var sorted_unfinished_blocks = sortBlocks();
     var sorted_unfinished_textures = sortTextureImages();
     
@@ -256,7 +276,7 @@ function updateDownloadQueue()
 
 function scheduleDownloads()
 {
-    console.log("scheduleDownloads() " + new Date());
+    //console.log("scheduleDownloads() " + new Date());
     //If download queue is empty, schedule downloads again after 1 sec...
     if (downloadQueue.length == 0)
     {
@@ -389,14 +409,14 @@ function sortTextureImages()
 function download_full_file(asset_obj)
 {
     var file_url = asset_obj.url;
-    console.log(new Date() + " download_full_file() - asset name: " + asset_obj.name + " - URL: " + file_url);
+    //console.log(new Date() + " download_full_file() - asset name: " + asset_obj.name + " - URL: " + file_url);
     var xhr = new XMLHttpRequest();
     //Add timestamp to URL to avoid caching...
 	xhr.open('GET', file_url + "?" + Date.now(), true);
 	xhr.responseType = 'blob';	 
 	xhr.onload = function(e) {
         if (this.status == 200) {
-            console.log(new Date() + " Asset loading from real URL finished!");
+            //console.log(new Date() + " Asset loading from real URL finished!");
 			asset_obj.chunks[0] = this.response;
             asset_obj.status = "finished";
             asset_obj.addToScene();
@@ -412,7 +432,7 @@ function downloadChunk(start_chunk_idx, end_chunk_idx, asset_obj) {
     var end_byte_idx = ((end_chunk_idx+1) * chunk_size_bytes) - 1;
   
     var file_url = asset_obj.url;
-    console.log(new Date() + " downloadChunk() - asset name: " + asset_obj.name + " - URL: " + file_url + " Chunk (" + (start_chunk_idx+1) + " / " + asset_obj.num_total_chunks + ")");
+    //console.log(new Date() + " downloadChunk() - asset name: " + asset_obj.name + " - URL: " + file_url + " Chunk (" + (start_chunk_idx+1) + " / " + asset_obj.num_total_chunks + ")");
       //info.append("--> Downloading chunks from " + ase_info.name + " (" + start_chunk_idx + " - " + end_chunk_idx + ")<br><br>");
             
     var xhr = new XMLHttpRequest;
@@ -439,8 +459,8 @@ function downloadChunk(start_chunk_idx, end_chunk_idx, asset_obj) {
 
 function handleCompletedChunk(start_chunk_idx, end_chunk_idx, asset_info, chunk_data)
 {
-	console.log("handleCompeletedChunks "+start_chunk_idx+" .. "
-	+end_chunk_idx+" from "+chunk_source_info.name);
+	//console.log("handleCompeletedChunks "+start_chunk_idx+" .. "
+	//+end_chunk_idx+" from "+chunk_source_info.name);
   //info.append("<b><== Received chunks [" + start_chunk_idx + "-" + end_chunk_idx + "] from " + chunk_source_info.name + "<br><br></b>");
 //         info.append("Payload data:<br>" + chunk_data + "<br>");        
   chunked_asset_data[start_chunk_idx] = chunk_data;
@@ -586,10 +606,9 @@ function init() {
 
     //if autocam, we want it to point forward along a street instead
     if (autoCamera) {
-	camera.rotation.set(0, 0, 0);
-	camera.position.x = 420;
-	camera.position.y = 2;
-	camera.position.z = 540;
+	camera.position.copy(autoPath[0]);
+	autoIndex = 1; //next target
+	camera.lookAt(autoPath[autoIndex]);
     } else { // position and point the camera to the center of the scene
 	camera.position.x = 60;
 	camera.position.y = 2;
@@ -793,7 +812,7 @@ function prioritizeBlocks () {
 			buildingList[geometryuuid] = {x: objectx, z: objectz, objectID: newob.id};
 			
 			scene.add(newob);
-			console.log (buildingList);
+			//console.log (buildingList);
 			}
 		}
 		for (m in blockMaterials){ // Tekstuurien käsittely
@@ -828,15 +847,15 @@ function prioritizeBlocks () {
 	xhr.responseType = 'blob';	 
 	xhr.onload = function(e) {
         if (this.status == 200) {
-            console.log(new Date() + " Texture loading from real URL finished!");
+            //console.log(new Date() + " Texture loading from real URL finished!");
 		// get binary data as a response
-			console.log(typeof(this.response));
+			//console.log(typeof(this.response));
 		   building_texture_blob = this.response;
            blob_url = URL.createObjectURL(building_texture_blob);
-           console.log(new Date() + " Loading texture from blob object url: " + blob_url);
+           //console.log(new Date() + " Loading texture from blob object url: " + blob_url);
 		   map = textureLoader.load(blob_url);
-           console.log(new Date() + " Texture loading from blob object URL finished!");
-			console.log(map);
+           //console.log(new Date() + " Texture loading from blob object URL finished!");
+			//console.log(map);
 	//Tässä tehdään materiaali joka käyttää ko. tekstuuria. Ehkä tähän voi tehdä myöhemmin jonkun if/elsen joka tekee materiaalin ilman tekstuuritiedostoa ennen kuin tekstuuri on ladattu
 		material2 = new THREE.MeshPhongMaterial( {
             color: 0xaaaaaa,
@@ -846,13 +865,13 @@ function prioritizeBlocks () {
 		} );	
 	
         test_id = buildingList["0CFDFFFA-FCCE-3A23-AB65-A355F7817B80"]["objectID"];
-        console.log(test_id);
+        //console.log(test_id);
         scene.getObjectById(test_id).material = material2;
 		   
 		   
 	  }
 	};
-	console.log(new Date() + " Loading texture from real URL: " + buildingList["0CFDFFFA-FCCE-3A23-AB65-A355F7817B80"]["TextureUrl"]); 
+	//console.log(new Date() + " Loading texture from real URL: " + buildingList["0CFDFFFA-FCCE-3A23-AB65-A355F7817B80"]["TextureUrl"]); 
 	xhr.send();
 	/*	
 	//map = textureLoader.load(buildingList["0CFDFFFA-FCCE-3A23-AB65-A355F7817B80"]["TextureUrl"]); //HUOM tässä kohtaa ladataan tekstuuri! Tähän tulee sitten joku kutsu joka korvaa tämän.
@@ -881,10 +900,13 @@ function updateAutoCamera(delta) {
     var speed = 10;
     camera.translateZ(-(speed * delta));
 
-    if (camera.position.z < 425) {
-	camera.rotation.set(0, THREE.Math.degToRad(90), 0);
-    }
+    var distSq = camera.position.distanceToSquared(autoPath[autoIndex]);
+    console.log(distSq);
 
+    if (distSq < 2) {
+	autoIndex += 1;
+	camera.lookAt(autoPath[autoIndex]);
+    }
 }
 	
 function render() {

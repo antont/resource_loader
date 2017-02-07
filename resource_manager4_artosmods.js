@@ -25,11 +25,14 @@ var num_active_chunk_downloads = 0; //Montako chunkin latausta käynnissä
 
 var autoCamera = true;
 var autoIndex = 0;
+var autoStopTimer = -1; //-1 = disabled, is positive when is running as timer
 var autoPathConfig = [
     [420, 540],
     [420, 300],
+    "STOP",
     [180, 300],
     [180, 420],
+    "STOP",
     [60,  420],
     [60,  300],
     [180, 300],
@@ -41,8 +44,12 @@ var autoPathConfig = [
 var autoPath = [];
 for (i in autoPathConfig) { 
     var cur = autoPathConfig[i];
-    var vec = new THREE.Vector3(cur[0], 2, cur[1]);
-    autoPath.push(vec);
+    if (cur == "STOP") {
+	autoPath.push(cur);
+    } else {
+	var vec = new THREE.Vector3(cur[0], 2, cur[1]);
+	autoPath.push(vec);
+    }
 }
 
 function TextureImage(name, url, x, y, parentObj)  //Arvaus: y:hyn voidaan syöttää z-arvo?
@@ -896,19 +903,46 @@ function prioritizeBlocks () {
 
 }*/
 
-function updateAutoCamera(delta) {
-    var speed = 10;
-    camera.translateZ(-(speed * delta));
-
-    var distSq = camera.position.distanceToSquared(autoPath[autoIndex]);
-    console.log(distSq);
-
-    if (distSq < 2) {
-	autoIndex += 1;
+function setAutoNext() {
+    autoIndex += 1;
+    var next = autoPath[autoIndex];
+    if (next == "STOP") {
+	autoStopTimer = 10;
+    } else { //now: must be a THREE.Vector3 of the next pos
 	camera.lookAt(autoPath[autoIndex]);
     }
 }
-	
+
+function updateAutoCamera(delta) {
+    var target = autoPath[autoIndex];
+    //console.log(target);
+
+    if (autoStopTimer > 0) {
+	/*could do sanity check
+	if (target == "STOP") {
+	} else {
+	    console.log("WARNING: 
+	}*/
+	console.log(autoStopTimer + " - " + delta);
+
+	camera.rotation.y += 1 * delta; 
+	autoStopTimer -= delta;
+	if (autoStopTimer < 0) {
+	    setAutoNext();
+	}
+    } else {
+	var speed = 10;
+	camera.translateZ(-(speed * delta));
+
+	var distSq = camera.position.distanceToSquared(target);
+	console.log(distSq);
+
+	if (distSq < 2) {
+	    setAutoNext();
+	}
+    }
+}
+
 function render() {
 
 	stats.update();
